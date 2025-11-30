@@ -312,6 +312,55 @@
 #          git commit -m "Update frontend image to version ${{ github.run_number }}"
 #          git push origin main
 
+# name: Bank Frontend Pipeline
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+
+#   # 🚫 SKIPPED: Build + Push Job (because you pushed manually)
+#   Continues-Integration_build_and_push:
+#     runs-on: self-hosted
+#     steps:
+#       - name: Skip build and push
+#         run: echo "Build and push skipped because image was pushed manually."
+
+
+#   # ✅ Manifest Update Job
+#   Continues-Update_k8s_manifest:
+#     runs-on: self-hosted
+#     needs: Continues-Integration_build_and_push
+
+#     steps:
+#       - name: Checkout manifest repository
+#         env:
+#           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+#           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
+#         run: |
+#           # Clone repo
+#           git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git
+
+#           # Enter correct repo folder
+#           cd kubernetes-manifest
+
+#           # Configure Git
+#           git config user.email "cynthiabedford23@gmail.com"
+#           git config user.name "cynthia"
+
+#           # Update frontend image to latest
+#           sed -i "s+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:.*+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest+g" ./bank-project/frontend.yaml
+
+#           # Confirm update
+#           grep "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest" ./bank-project/frontend.yaml
+
+#           # Commit and push
+#           git add bank-project/frontend.yaml
+#           git commit -m "Update frontend image to 'latest' (manual push)"
+#           git push origin main
+
 name: Bank Frontend Pipeline
 
 on:
@@ -321,42 +370,35 @@ on:
 
 jobs:
 
-  # 🚫 SKIPPED: Build + Push Job (because you pushed manually)
+  # 🚫 SKIP BUILD + PUSH
   Continues-Integration_build_and_push:
     runs-on: self-hosted
     steps:
       - name: Skip build and push
         run: echo "Build and push skipped because image was pushed manually."
 
-
-  # ✅ Manifest Update Job
+  # ✅ MANIFEST UPDATE
   Continues-Update_k8s_manifest:
     runs-on: self-hosted
     needs: Continues-Integration_build_and_push
-
     steps:
-      - name: Checkout manifest repository
+      - name: Checkout Kubernetes manifests
         env:
           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
         run: |
-          # Clone repo
-          git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git
+          git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git kubernetes-manifest
+          cd kubernetes-manifest
+          git config --global user.email "cynthiabedford23@gmail.com"
+          git config --global user.name "cynthia"
 
-          # Enter correct repo folder
-          cd kubernetes-manifest-file
-
-          # Configure Git
-          git config user.email "cynthiabedford23@gmail.com"
-          git config user.name "cynthia"
-
-          # Update frontend image to latest
+          # Update frontend image to 'latest'
           sed -i "s+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:.*+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest+g" ./bank-project/frontend.yaml
 
-          # Confirm update
-          grep "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest" ./bank-project/frontend.yaml
+          # Verify update
+          grep -q "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest" ./bank-project/frontend.yaml
 
-          # Commit and push
-          git add bank-project/frontend.yaml
+          # Commit & push changes
+          git add ./bank-project/frontend.yaml
           git commit -m "Update frontend image to 'latest' (manual push)"
           git push origin main
