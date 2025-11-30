@@ -232,6 +232,86 @@
 #          git push origin main
         
 
+# name: Bank Frontend Pipeline
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   Continues-Integration_build_and_push:
+#     runs-on: self-hosted
+
+#     steps:
+#     - name: Checkout repository
+#       uses: actions/checkout@v3
+#       with:
+#         repository: Ceecloud/bank-_frontend 
+#         ref: main
+
+#     - name: Log in to awscli
+#       uses: aws-actions/configure-aws-credentials@v3
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: eu-north-1
+
+#     - name: Verify AWS credentials
+#       run: aws sts get-caller-identity
+
+#     - name: Create ECR repository if not exists
+#       run: |
+#         aws ecr describe-repositories --repository-names bank-frontend
+#         if ($LASTEXITCODE -ne 0) {
+#           aws ecr create-repository --repository-name bank-frontend
+#         }
+
+#     - name: Build container image
+#       run: docker build -t bank-app-frontend:latest .
+
+#     - name: Log in to ECR with short-lived credentials
+#       run: |
+#         $token = aws ecr get-login-password --region eu-north-1
+#         echo $token | docker login --username AWS --password-stdin 805301696583.dkr.ecr.eu-north-1.amazonaws.com
+  
+#     - name: Tag Docker image
+#       run: docker tag bank-app-frontend:latest 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
+    
+#     - name: Push image to ECR
+#       run: docker push 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
+
+#     - name: Clean up Docker image locally
+#       run: |
+#         docker rmi bank-app-frontend:latest
+#         docker rmi 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
+
+#     - name: Clean up GitHub repo on runner
+#       run: rm -rf ./*
+  
+#   Continues-Update_k8s_manifest:
+#     runs-on: self-hosted
+#     needs: Continues-Integration_build_and_push
+#     steps:
+#     - name: Checkout repository.
+#       env:
+#           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+#           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
+#       run: |
+#          git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git
+         
+#          cd kubernetes-manifest
+#          git config --global user.email "cynthiabedford23@gmail.com"
+#          git config --global user.name "cynthia"
+
+#          sed -i "s+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:.*+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}+g" ./bank-project/frontend.yaml
+
+#          cat ./bank-project/frontend.yaml | grep -q "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}"
+
+#          git add bank-project/frontend.yaml
+#          git commit -m "Update frontend image to version ${{ github.run_number }}"
+#          git push origin main
+
 name: Bank Frontend Pipeline
 
 on:
@@ -240,76 +320,43 @@ on:
       - main
 
 jobs:
+
+  # 🚫 SKIPPED: Build + Push Job (because you pushed manually)
   Continues-Integration_build_and_push:
     runs-on: self-hosted
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        repository: Ceecloud/bank-_frontend 
-        ref: main
+      - name: Skip build and push
+        run: echo "Build and push skipped because image was pushed manually."
 
-    - name: Log in to awscli
-      uses: aws-actions/configure-aws-credentials@v3
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-north-1
 
-    - name: Verify AWS credentials
-      run: aws sts get-caller-identity
-
-    - name: Create ECR repository if not exists
-      run: |
-        aws ecr describe-repositories --repository-names bank-frontend
-        if ($LASTEXITCODE -ne 0) {
-          aws ecr create-repository --repository-name bank-frontend
-        }
-
-    - name: Build container image
-      run: docker build -t bank-app-frontend:latest .
-
-    - name: Log in to ECR with short-lived credentials
-      run: |
-        $token = aws ecr get-login-password --region eu-north-1
-        echo $token | docker login --username AWS --password-stdin 805301696583.dkr.ecr.eu-north-1.amazonaws.com
-  
-    - name: Tag Docker image
-      run: docker tag bank-app-frontend:latest 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
-    
-    - name: Push image to ECR
-      run: docker push 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
-
-    - name: Clean up Docker image locally
-      run: |
-        docker rmi bank-app-frontend:latest
-        docker rmi 805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}
-
-    - name: Clean up GitHub repo on runner
-      run: rm -rf ./*
-  
+  # ✅ Manifest Update Job
   Continues-Update_k8s_manifest:
     runs-on: self-hosted
     needs: Continues-Integration_build_and_push
+
     steps:
-    - name: Checkout repository.
-      env:
+      - name: Checkout manifest repository
+        env:
           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
-      run: |
-         git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git
-         
-         cd kubernetes-manifest
-         git config --global user.email "cynthiabedford23@gmail.com"
-         git config --global user.name "cynthia"
+        run: |
+          # Clone repo
+          git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Ceecloud/kubernetes-manifest-file.git
 
-         sed -i "s+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:.*+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}+g" ./bank-project/frontend.yaml
+          # Enter correct repo folder
+          cd kubernetes-manifest-file
 
-         cat ./bank-project/frontend.yaml | grep -q "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:${{ github.run_number }}"
+          # Configure Git
+          git config user.email "cynthiabedford23@gmail.com"
+          git config user.name "cynthia"
 
-         git add bank-project/frontend.yaml
-         git commit -m "Update frontend image to version ${{ github.run_number }}"
-         git push origin main
+          # Update frontend image to latest
+          sed -i "s+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:.*+805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest+g" ./bank-project/frontend.yaml
 
-        #  
+          # Confirm update
+          grep "805301696583.dkr.ecr.eu-north-1.amazonaws.com/bank-frontend:latest" ./bank-project/frontend.yaml
+
+          # Commit and push
+          git add bank-project/frontend.yaml
+          git commit -m "Update frontend image to 'latest' (manual push)"
+          git push origin main
