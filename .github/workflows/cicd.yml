@@ -158,9 +158,6 @@ on:
   push:
     branches:
       - main
-  # pull_request:
-  #   branches:
-  #     - cicd
 
 jobs:
   Continues-Integration_build_and_push:
@@ -185,8 +182,10 @@ jobs:
 
     - name: Create ECR repository if not exists
       run: |
-        aws ecr describe-repositories --repository-names bank-frontend || \
-        aws ecr create-repository --repository-name bank-frontend
+        aws ecr describe-repositories --repository-names bank-frontend
+        if ($LASTEXITCODE -ne 0) {
+          aws ecr create-repository --repository-name bank-frontend
+        }
 
     - name: Build container image
       run: docker build -t bank-app-frontend:latest .
@@ -231,3 +230,4 @@ jobs:
          git add bank-project/frontend.yaml
          git commit -m "Update frontend image to version ${{ github.run_number }}"
          git push origin main
+        #  
